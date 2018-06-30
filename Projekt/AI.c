@@ -19,18 +19,16 @@ void computerMove(struct Board *board[8][8], struct WindowApp* app, move_t* best
 
 				while (moves) {	// For every move		
 					tempMove(board, &point, &moves->point);
-					int toChange = FALSE;
-						float tempValue = alphaBetaPruning(board, &values, bestValue, 99999.0, 1, FALSE);
-						if (tempValue == bestValue)
-							if (!(rand() % 30)) toChange = TRUE;
-						if (tempValue > bestValue || toChange || bestMove->point1.x == -1) {
-							bestValue = tempValue;
-							bestMove->point1.x = i;
-							bestMove->point1.y = j;
-							bestMove->point2.x = moves->point.x;
-							bestMove->point2.y = moves->point.y;
-						}
-						
+					float tempValue = alphaBetaPruning(board, &values, bestValue, 99999.0, 3, FALSE);
+
+					if (tempValue > bestValue || bestMove->point1.x == -1) {
+						bestValue = tempValue;
+						bestMove->point1.x = i;
+						bestMove->point1.y = j;
+						bestMove->point2.x = moves->point.x;
+						bestMove->point2.y = moves->point.y;
+					}
+
 					undoMove(board);
 					moves = moves->next;
 				}
@@ -41,12 +39,10 @@ void computerMove(struct Board *board[8][8], struct WindowApp* app, move_t* best
 }
 
 float alphaBetaPruning(struct Board *board[8][8], values_t* values, float alpha, float beta, int depth, int max) {
-	float bestValue = 0.0;
 	if (eventType(GET) == QUIT || eventType(GET) == BACK) return QUIT;
 	if (depth >= values->maxDepth) { // Evaluate value if it is depth max
-		bestValue = getValue(board, values->color);
 		eventType(processOneEvent(values->app, NULL));
-		return bestValue;
+		return getValue(board, values->color);
 	}
 	for (int i = 0; i < 8; i++)
 		for (int j = 0; j < 8; j++) {
@@ -62,29 +58,25 @@ float alphaBetaPruning(struct Board *board[8][8], values_t* values, float alpha,
 					int changed = FALSE;
 					tempMove(board, &point, &moves->point);
 					if (max == TRUE) {
-						bestValue = alpha; // Temp best
 						float tempValue = alphaBetaPruning(board, values, alpha, beta, depth + 1, FALSE);
 						undoMove(board); 
-						if (tempValue >= beta) { // Cut-off, no need to continue searching on this level (depth)
-							delList(&movesHead);
-							return 	beta;
-						}
 						if (tempValue > alpha) { // Better value
-							bestValue = tempValue;
 							alpha = tempValue;
+						}
+						if (alpha >= beta) { // Cut-off, no need to continue searching on this level (depth)
+							delList(&movesHead);
+							return alpha;
 						}
 					}
 					else { // max == FALSE
-						bestValue = beta; // Temp best
 						float tempValue = alphaBetaPruning(board, values, alpha, beta, depth + 1, TRUE);
 						undoMove(board);
-						if (tempValue <= alpha) { // Cut-off, no need to continue searching on this level (depth)
-							delList(&movesHead);
-							return 	alpha;
-						}
 						if (tempValue < beta) { // Better value
 							beta = tempValue;
-							bestValue = tempValue;
+						}
+						if (alpha >= beta) { // Cut-off, no need to continue searching on this level (depth)
+							delList(&movesHead);
+							return beta;
 						}
 					}
 					moves = moves->next;
@@ -93,7 +85,9 @@ float alphaBetaPruning(struct Board *board[8][8], values_t* values, float alpha,
 				moves = NULL;
 			}
 		}
-	return 	bestValue;
+	if (max)
+		return alpha;
+	return	beta;
 }
 
 float getValue(struct Board *board[8][8], int color) {
